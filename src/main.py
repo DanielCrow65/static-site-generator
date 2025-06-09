@@ -1,6 +1,6 @@
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import text_node_to_html_node
+from conversion import text_node_to_html_node, split_nodes_delimiter
 
 #print("hello world")
 
@@ -29,7 +29,7 @@ def text_node_to_html_node(text_node):
 
 def main():
     # TEXT NODE CHECK
-    
+    """
     my_textnode = TextNode("This is some anchor text", TextType.LINK, "https://www.boot.dev")
     my_textnode2 = TextNode("This is some anchor text", TextType.LINK, "https://www.boot.dev")
     my_textnode3 = TextNode("This is another example of anchor text", TextType.LINK, "https://www.boot.dev")
@@ -66,7 +66,7 @@ def main():
     print(my_textnode_image.__repr__())
     my_new_html_node6 = text_node_to_html_node(my_textnode_image)
     print(my_new_html_node6)
-
+    """
     # HTML NODE CHECK WITH PROPS
     """
     my_htmlnode = HTMLNode('a', "Test line here", None, {"href": "www.google.com", "target": "_blank"})
@@ -115,5 +115,36 @@ def main():
     print(parent_node.__repr__())
     print(parent_node.to_html())
     """
+
+    #SPLIT NODES TESTS
+    """
+    node1 = TextNode("This is text with a `code block` word", TextType.TEXT)
+    new_nodes1 = split_nodes_delimiter([node1], "`", TextType.CODE)
+
+    node2 = TextNode("`I start with a delimiter`, hope you can handle me.", TextType.TEXT)
+    new_nodes2 = split_nodes_delimiter([node2], "`", TextType.CODE)
+
+    node3 = TextNode("I have `multiple` delimited `segments` so I hope you got this", TextType.TEXT)
+    new_nodes3 = split_nodes_delimiter([node3], "`", TextType.CODE)
+
+    node4 = TextNode("I end in a `code block`", TextType.TEXT)
+    new_nodes4 = split_nodes_delimiter([node4], "`", TextType.CODE)
+
+    node5 = TextNode("**I start with a delimiter** and I have **another delimiter at the end**", TextType.TEXT)
+    new_nodes5 = split_nodes_delimiter([node5], "**", TextType.BOLD)
+
+    node6 = TextNode("I am a perfectly normal set of raw text", TextType.TEXT)
+    new_nodes6 = split_nodes_delimiter([node6], "**", TextType.BOLD)
+
+    node7 = TextNode("I am just raw text!", TextType.TEXT)
+    node8 = TextNode("I am a piece of italic text!", TextType.ITALIC)
+    node9 = TextNode("I am another set of raw text!", TextType.TEXT)
+    new_nodes789 = split_nodes_delimiter([node7, node8, node9], "_", TextType.ITALIC)
+    """
+    node1 = TextNode("I am just raw text!", TextType.TEXT)
+    node2 = TextNode("I am a piece of italic text!", TextType.ITALIC)
+    node3 = TextNode("I am another set of raw text!", TextType.TEXT)
+    result = split_nodes_delimiter([node1, node2, node3], "_", TextType.ITALIC)
+    print(result)
 
 main()
