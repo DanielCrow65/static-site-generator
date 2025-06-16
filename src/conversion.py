@@ -33,7 +33,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
         if node.text_type == TextType.TEXT:
             node_text = node.text
             #print(node_text)
-            del_index = node_text.find(delimiter)
+            del_index = node_text.find(delimiter) # Find the index of the delimiter (this is the first delimiter)
             if del_index == 0: # This happens if the string already begins with a delimiter
                 within_delimiter = True
             else:
@@ -55,7 +55,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     #print(node_text)
                     within_delimiter = True
                 elif within_delimiter is True:
-                    close_del_index = node_text[1:].find(delimiter)
+                    close_del_index = node_text[1:].find(delimiter) # Exclude index 0 (where the first delimiter is) and find the second one
                     if close_del_index == -1:
                         # currently in a delimited string but the string ended before finding the closing delimiter
                         raise ValueError("No closing delimiter for the last node")
@@ -75,5 +75,5 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
             #print(delimited_list)
             #print(new_nodes)
         else:
-            new_nodes.extend([node])
+            new_nodes.extend([node]) # If the text node presented was not a TEXT text type, it does not need to be split
     return new_nodes

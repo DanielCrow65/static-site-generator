@@ -1,33 +1,26 @@
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import text_node_to_html_node, split_nodes_delimiter
+from conversion import split_nodes_delimiter
+import re
 
 #print("hello world")
 
-def text_node_to_html_node(text_node):
-    match text_node.text_type:
-        case TextType.TEXT:
-            text_html = LeafNode(None, text_node.text, None)
-            return text_html
-        case TextType.BOLD:
-            bold_html = LeafNode("b", text_node.text, None)
-            return bold_html
-        case TextType.ITALIC:
-            italic_html = LeafNode("i", text_node.text, None)
-            return italic_html
-        case TextType.CODE:
-            code_html = LeafNode("code", text_node.text, None)
-            return code_html
-        case TextType.LINK:
-            link_html = LeafNode("a", text_node.text, {"href": text_node.url})
-            return link_html
-        case TextType.IMAGE:
-            image_html = LeafNode("img", "", {"src": text_node.url, "alt": text_node.text})
-            return image_html
-        case __:
-            raise Exception("This text type is invalid")
+def extract_markdown_images(text):
+    # Accept text string
+    # Extract markdown syntax for image
+    # Return list of tuples, each tuple containing the alt text and markdown lists (both in the url property of a image type text node)
+    image_match = re.findall(r"!\[([^\[\]]*)\]\(([^\(\)]*)\)", text) # this creates a list 
+    return image_match
+
+def extract_markdown_links(text):
+    # Accept text string
+    # Extract markdown syntax for image
+    # Return list of tuples, each tuple containing anchor text and the href (text property and url property of a link type text node)
+    link_match = re.findall(r"(?<!!)\[([^\[\]]*)\]\(([^\(\)]*)\)", text)
+    return link_match
 
 def main():
+    # These rough tests are converted into proper unit tests in the test module
     # TEXT NODE CHECK
     """
     my_textnode = TextNode("This is some anchor text", TextType.LINK, "https://www.boot.dev")
@@ -97,18 +90,16 @@ def main():
     my_parentnode = ParentNode("body", my_list, None)
     print(my_parentnode.__repr__())
     print(my_parentnode.to_html())
-    """
 
-    #my_parentnode2 = ParentNode(None, my_list, None)
-    #print(my_parentnode2.to_html())
+    my_parentnode2 = ParentNode(None, my_list, None)
+    print(my_parentnode2.to_html())
 
-    #my_parentnode3 = ParentNode("body", None, None)
-    #print(my_parentnode3.to_html())
+    my_parentnode3 = ParentNode("body", None, None)
+    print(my_parentnode3.to_html())
 
-    #my_parentnode4 = ParentNode("body", [], None)
-    #print(my_parentnode4.to_html())
-
-    """
+    my_parentnode4 = ParentNode("body", [], None)
+    print(my_parentnode4.to_html())
+    
     grandchild_node = LeafNode("b", "grandchild")
     child_node = ParentNode("span", [grandchild_node])
     parent_node = ParentNode("div", [child_node])
@@ -119,32 +110,54 @@ def main():
     #SPLIT NODES TESTS
     """
     node1 = TextNode("This is text with a `code block` word", TextType.TEXT)
-    new_nodes1 = split_nodes_delimiter([node1], "`", TextType.CODE)
+    result_basic_input = split_nodes_delimiter([node1], "`", TextType.CODE)
+    print(result_basic_input)
 
     node2 = TextNode("`I start with a delimiter`, hope you can handle me.", TextType.TEXT)
-    new_nodes2 = split_nodes_delimiter([node2], "`", TextType.CODE)
+    result_delimited_start = split_nodes_delimiter([node2], "`", TextType.CODE)
+    print(result_delimited_start)
 
     node3 = TextNode("I have `multiple` delimited `segments` so I hope you got this", TextType.TEXT)
-    new_nodes3 = split_nodes_delimiter([node3], "`", TextType.CODE)
+    result_multiple_delimited = split_nodes_delimiter([node3], "`", TextType.CODE)
+    print(result_multiple_delimited)    
 
     node4 = TextNode("I end in a `code block`", TextType.TEXT)
-    new_nodes4 = split_nodes_delimiter([node4], "`", TextType.CODE)
+    result_delimited_end = split_nodes_delimiter([node4], "`", TextType.CODE)
+    print(result_delimited_end)
 
     node5 = TextNode("**I start with a delimiter** and I have **another delimiter at the end**", TextType.TEXT)
-    new_nodes5 = split_nodes_delimiter([node5], "**", TextType.BOLD)
+    result_delimited_start_and_end = split_nodes_delimiter([node5], "**", TextType.BOLD)
+    print(result_delimited_start_and_end)
 
     node6 = TextNode("I am a perfectly normal set of raw text", TextType.TEXT)
-    new_nodes6 = split_nodes_delimiter([node6], "**", TextType.BOLD)
+    result_multichar_delimiter = split_nodes_delimiter([node6], "**", TextType.BOLD)
+    print (result_multichar_delimiter)
 
     node7 = TextNode("I am just raw text!", TextType.TEXT)
     node8 = TextNode("I am a piece of italic text!", TextType.ITALIC)
     node9 = TextNode("I am another set of raw text!", TextType.TEXT)
-    new_nodes789 = split_nodes_delimiter([node7, node8, node9], "_", TextType.ITALIC)
+    result_multiple_node_input = split_nodes_delimiter([node7, node8, node9], "_", TextType.ITALIC)
+    print(result_multiple_node_input)
     """
-    node1 = TextNode("I am just raw text!", TextType.TEXT)
-    node2 = TextNode("I am a piece of italic text!", TextType.ITALIC)
-    node3 = TextNode("I am another set of raw text!", TextType.TEXT)
-    result = split_nodes_delimiter([node1, node2, node3], "_", TextType.ITALIC)
-    print(result)
+
+    # REGEX TESTS
+    # Basic Regex test
+    text = "I'm a little teapot, short and stout. Here is my handle, here is my spout."
+    matches = re.findall(r"teapot", text)
+    print(matches) # ['teapot']
+
+    text = "My email is lane@example.com and my friend's email is hunter@example.com"
+    matches = re.findall(r"(\w+)@(\w+\.\w+)", text)
+    print(matches)  # [('lane', 'example.com'), ('hunter', 'example.com')]
+    
+    # Extract markdown image
+    text = "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
+    print(extract_markdown_images(text)) 
+    # [('image', 'https://i.imgur.com/zjjcJKZ.png')]
+
+    # Extract markdown link
+    text = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+    print(extract_markdown_links(text))
+    # [("to boot dev", "https://www.boot.dev"), ("to youtube", "https://www.youtube.com/@bootdotdev")]
 
 main()

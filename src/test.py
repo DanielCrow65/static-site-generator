@@ -3,6 +3,7 @@ import unittest
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
 from conversion import text_node_to_html_node, split_nodes_delimiter
+from extraction import extract_markdown_images, extract_markdown_links
 
 class TestTextNode(unittest.TestCase):
     # TEXT NODE TESTS
@@ -223,6 +224,20 @@ class TestTextNode(unittest.TestCase):
         with self.assertRaises(ValueError):
             split_nodes_delimiter([node], "_", TextType.ITALIC)
 
+    # EXTRACT MARKDOWN TESTS
+    def test_extract_markdown_images(self):
+        matches = extract_markdown_images(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
+        )
+        expectation = [("image", "https://i.imgur.com/zjjcJKZ.png")]
+        self.assertListEqual(matches, expectation)
+    
+    def test_extract_markdown_links(self):
+        matches = extract_markdown_links(
+            "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+        )
+        expectation = [("to boot dev", "https://www.boot.dev"), ("to youtube", "https://www.youtube.com/@bootdotdev")]
+        self.assertListEqual(matches, expectation)
 
 if __name__ == "__main__":
     unittest.main()
