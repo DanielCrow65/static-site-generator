@@ -14,7 +14,9 @@ class TextNode:
         self.text_type = text_type
         self.url = url
 
-    # Compares 2 TextNode arguments if they have the same attributes
+    # Compares 2 TextNode arguments if they have the same attributes 
+    # The main purpose of this method is allowing simple node1 = node2 to work as expected
+    # You can see this on the unit tests
     def __eq__(self, second_node):
         if (
             self.text == second_node.text 

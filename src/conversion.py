@@ -1,5 +1,6 @@
 from textnode import TextType, TextNode
 from htmlnode import LeafNode
+from extraction import extract_markdown_images, extract_markdown_links
 
 def text_node_to_html_node(text_node):
     match text_node.text_type:
@@ -77,3 +78,62 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
         else:
             new_nodes.extend([node]) # If the text node presented was not a TEXT text type, it does not need to be split
     return new_nodes
+
+def split_nodes_image(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type == TextType.TEXT:
+            extracted_images = extract_markdown_images(node.text) # This gives me the list of tuples I need to make the Image TextNodes
+            text_to_update = node.text
+            if extracted_images != []: # If the list is empty, this TextNode has no image links in it
+                for item in extracted_images:
+                    image_alt = item[0] # grabs the alt text stored in the first index
+                    image_link = item[1] # grabs the link string stored in the second index
+                    # split the text using the markdown syntax as a delimiter, creating a list of ONLY 2 items
+                    updated_text = text_to_update.split(f"![{image_alt}]({image_link})", 1) # this will ALWAYS produce 2 items
+                    # grabs the first item and turns it into a normal textnode (normal text found before finding a link)
+                    new_text_node = TextNode(updated_text[0], TextType.TEXT)
+                    new_image_node = TextNode(image_alt, TextType.IMAGE, image_link)
+                    if new_text_node.text.strip() != "": # skips adding to the final list if there is no text found, and disqualifies whitespace
+                        new_nodes.extend([new_text_node])
+                    if new_image_node.text.strip() != "":
+                        new_nodes.extend([new_image_node])
+                    text_to_update = updated_text[1] # prepares text_to_update for the next iteration of the loop
+                # upon exiting the loop (gone through all of extracted_images), grab the remaining text and turn it into a TextNode!
+                final_node = TextNode(text_to_update, TextType.TEXT)
+                if final_node.text.strip() != "":
+                    new_nodes.extend([final_node])
+            else:
+                new_nodes.extend([node]) # no image links were found so it is safe to extend the entire node
+        else:
+            new_nodes.extend([node])
+    return new_nodes
+
+def split_nodes_link(old_nodes):
+    new_nodes = []
+    for node in old_nodes:
+        if node.text_type == TextType.TEXT:
+            extracted_links = extract_markdown_links(node.text)
+            text_to_update = node.text
+            if extracted_links != []:
+                for item in extracted_links:
+                    link_text = item[0]
+                    link_href = item[1]
+                    updated_text = text_to_update.split(f"[{link_text}]({link_href})", 1)
+                    new_text_node = TextNode(updated_text[0], TextType.TEXT)
+                    new_link_node = TextNode(link_text, TextType.LINK, link_href)
+                    if new_text_node.text.strip() != "":
+                        new_nodes.extend([new_text_node])
+                    if new_link_node.text.strip() != "":
+                        new_nodes.extend([new_link_node])
+                    text_to_update = updated_text[1]
+                final_node = TextNode(text_to_update, TextType.TEXT)
+                if final_node.text.strip() != "":
+                    new_nodes.extend([final_node])
+            else:
+                new_nodes.extend([node])
+        else:
+            new_nodes.extend([node])
+    return new_nodes
+
+# TEST

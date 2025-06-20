@@ -2,7 +2,7 @@ import unittest
 
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import text_node_to_html_node, split_nodes_delimiter
+from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link
 from extraction import extract_markdown_images, extract_markdown_links
 
 class TestTextNode(unittest.TestCase):
@@ -218,6 +218,7 @@ class TestTextNode(unittest.TestCase):
             TextNode('I am another set of raw text!', TextType.TEXT)
         ]
         self.assertEqual(result, expectation)
+        # Note, TextNode's __eq__ method allows this to work. Otherwise assertListEqual is necessary to pass this test
 
     def test_split_error_no_closing_delimiter(self):
         node = TextNode("I forgot to close my _delimiter, oops!", TextType.TEXT)
@@ -238,6 +239,175 @@ class TestTextNode(unittest.TestCase):
         )
         expectation = [("to boot dev", "https://www.boot.dev"), ("to youtube", "https://www.youtube.com/@bootdotdev")]
         self.assertListEqual(matches, expectation)
+    
+    def test_extract_empty_text(self):
+        matches = extract_markdown_images("This is text with an ![](https://i.imgur.com/zjjcJKZ.png)")
+        expectation = [('', 'https://i.imgur.com/zjjcJKZ.png')]
+        self.assertListEqual(matches, expectation)
+
+    """ SPLIT IMAGE TESTS """
+    # Happy Path (with multiple images in a single node)
+    def test_split_images(self):
+        node = TextNode(
+            "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png) and another ![second image](https://i.imgur.com/3elNhQu.png)",
+            TextType.TEXT,
+        )
+        new_nodes = split_nodes_image([node])
+        self.assertListEqual(
+            [
+                TextNode("This is text with an ", TextType.TEXT),
+                TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+                TextNode(" and another ", TextType.TEXT),
+                TextNode("second image", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png")
+            ],
+            new_nodes,
+        )
+    
+    # Simple Text but no images
+    def test_split_images_no_image(self):
+        node = TextNode("I am a simple text node with no images!", TextType.TEXT)
+        new_nodes = split_nodes_image([node])
+        expectation = [TextNode("I am a simple text node with no images!", TextType.TEXT, None)]
+        self.assertListEqual(new_nodes, expectation)
+
+    # Non TEXT TextType
+    def test_split_images_nontext(self):
+        node = TextNode("**I am not a simple text node, but not an image node either!**", TextType.BOLD)
+        new_nodes = split_nodes_image([node])
+        expectation = [TextNode("**I am not a simple text node, but not an image node either!**", TextType.BOLD, None)]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Markdown syntax are right next to each other
+    def test_split_images_adjacent(self):
+        node = TextNode("I have ![two](https://i.imgur.com/zjjcJKZ.png)![images](https://i.imgur.com/3elNhQu.png) right next to each other!", TextType.TEXT)
+        new_nodes = split_nodes_image([node])
+        expectation = [
+            TextNode("I have ", TextType.TEXT, None), 
+            TextNode("two", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"), 
+            TextNode("images", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"), 
+            TextNode(" right next to each other!", TextType.TEXT, None)]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Markdown syntax are separated only with white space
+    def test_split_images_whitespace(self):
+        node = TextNode("I have ![two](https://i.imgur.com/zjjcJKZ.png) ![images](https://i.imgur.com/3elNhQu.png) next to each other!", TextType.TEXT)
+        new_nodes = split_nodes_image([node])
+        expectation = [
+            TextNode("I have ", TextType.TEXT, None), 
+            TextNode("two", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"), 
+            TextNode("images", TextType.IMAGE, "https://i.imgur.com/3elNhQu.png"), 
+            TextNode(" next to each other!", TextType.TEXT, None)
+        ]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Markdown syntax at the start and at the end of the string
+    def test_split_images_start_and_end(self):
+        node = TextNode("![I start with an image](https://i.imgur.com/zjjcJKZ.png) and I end with ![one too.](https://i.imgur.com/zjjcJKZ.png)", TextType.TEXT)
+        new_nodes = split_nodes_image([node])
+        expectation = [
+            TextNode("I start with an image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"),
+            TextNode(" and I end with ", TextType.TEXT),
+            TextNode("one too.", TextType.IMAGE,"https://i.imgur.com/zjjcJKZ.png")
+        ]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Multiple TextNodes in one input
+    def test_split_images_multiple_nodes(self):
+        nodes = [
+            TextNode("This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)", TextType.TEXT), 
+            TextNode("**I am not a simple text node, but not an image node either!**", TextType.BOLD),
+            TextNode("I am a simple text node with no images!", TextType.TEXT)
+        ]
+        new_nodes = split_nodes_image(nodes)
+        expectation = [
+            TextNode("This is text with an ", TextType.TEXT), 
+            TextNode("image", TextType.IMAGE, "https://i.imgur.com/zjjcJKZ.png"), 
+            TextNode("**I am not a simple text node, but not an image node either!**", TextType.BOLD), 
+            TextNode("I am a simple text node with no images!", TextType.TEXT)
+        ]
+        self.assertListEqual(new_nodes, expectation)
+
+    """ SPLIT LINK TESTS """
+    # Happy Path (has multiple links and ends in a link)
+    def test_split_links(self):
+        node = TextNode(
+            "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", 
+            TextType.TEXT)
+        new_nodes = split_nodes_link([node])
+        expectation = [
+            TextNode("This is text with a link ", TextType.TEXT), 
+            TextNode("to boot dev", TextType.LINK, "https://www.boot.dev"), 
+            TextNode(" and ", TextType.TEXT), 
+            TextNode("to youtube", TextType.LINK, "https://www.youtube.com/@bootdotdev")
+        ]
+        self.assertListEqual(new_nodes, expectation)
+
+    # Simple Text with no Links
+    def test_split_links_no_link(self):
+        node = TextNode("I am a simple text node with no links!", TextType.TEXT)
+        new_nodes = split_nodes_link([node])
+        expectation = [TextNode("I am a simple text node with no links!", TextType.TEXT)]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Non TEXT TextType (with a link that should be ignored)
+    def test_split_links_nontext(self):
+        node = TextNode(
+            "**I am not a simple text node, but I am not a [link node](https://www.boot.dev), either!", TextType.BOLD)
+        new_nodes = split_nodes_link([node])
+        expectation = [
+            TextNode("**I am not a simple text node, but I am not a [link node](https://www.boot.dev), either!", TextType.BOLD)
+            ]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Markdown syntax at the start of the string
+    def test_split_links_start(self):
+        node = TextNode("[Boot dev](https://www.boot.dev) is an excellent website!", TextType.TEXT)
+        new_nodes = split_nodes_link([node])
+        expectation = [
+            TextNode("Boot dev", TextType.LINK, "https://www.boot.dev"), 
+            TextNode(" is an excellent website!", TextType.TEXT)
+            ]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Markdown syntax are right next to each other
+    def test_split_links_adjacent(self):
+        node = TextNode("I have [two](https://www.boot.dev)[links](https://www.youtube.com/@bootdotdev) right next to each other.", TextType.TEXT)
+        new_nodes = split_nodes_link([node])
+        expectation = [
+            TextNode("I have ", TextType.TEXT), 
+            TextNode("two", TextType.LINK, "https://www.boot.dev"), 
+            TextNode("links", TextType.LINK, "https://www.youtube.com/@bootdotdev"), 
+            TextNode(" right next to each other.", TextType.TEXT)
+            ]
+        self.assertListEqual(new_nodes, expectation)
+    
+    # Markdown syntax are separated only with whitespace
+    def test_split_links_whitespace(self):
+        node = TextNode("I have [two](https://www.boot.dev) [links](https://www.youtube.com/@bootdotdev) on me too!", TextType.TEXT)
+        new_nodes = split_nodes_link([node])
+        expectation = [
+            TextNode("I have ", TextType.TEXT), 
+            TextNode("two", TextType.LINK, "https://www.boot.dev"), 
+            TextNode("links", TextType.LINK, "https://www.youtube.com/@bootdotdev"), 
+            TextNode(" on me too!", TextType.TEXT)
+            ]
+        self.assertListEqual(new_nodes, expectation)
+
+    # Multiple TextNodes in one input:
+    def test_split_links_multiple_nodes(self):
+        nodes = [
+            TextNode("This is text with a [link](https://www.boot.dev)", TextType.TEXT), 
+            TextNode("**I am not a simple text node, but not a link node either!**", TextType.BOLD),
+            TextNode("I am a simple text node with no links!", TextType.TEXT)
+            ]
+        new_nodes = split_nodes_link(nodes)
+        expectation = [
+            TextNode("This is text with a ", TextType.TEXT), 
+            TextNode("link", TextType.LINK, "https://www.boot.dev"), 
+            TextNode("**I am not a simple text node, but not a link node either!**", TextType.BOLD), 
+            TextNode("I am a simple text node with no links!", TextType.TEXT)
+            ]
+        self.assertListEqual(new_nodes, expectation)
 
 if __name__ == "__main__":
     unittest.main()
