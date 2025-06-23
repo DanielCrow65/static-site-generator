@@ -2,7 +2,7 @@ import unittest
 
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes
+from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks
 from extraction import extract_markdown_images, extract_markdown_links
 
 class TestTextNode(unittest.TestCase):
@@ -442,6 +442,100 @@ class TestTextNode(unittest.TestCase):
             TextNode(" ", TextType.TEXT), TextNode("adjacent delimiters", TextType.CODE), TextNode(" and really ", TextType.TEXT), 
             TextNode("adjacent", TextType.BOLD), TextNode("ones", TextType.ITALIC), TextNode("too", TextType.CODE)
         ]
+        self.assertEqual(result, expectation)
+
+    """ MARKDOWN TO BLOCK TESTS """
+    # Happy Path
+    def test_markdown_to_blocks(self):
+        md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+        result = markdown_to_blocks(md)
+        expectation = [
+            'This is **bolded** paragraph', 
+            'This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line', 
+            '- This is a list\n- with items'
+            ]
+        self.assertEqual(result, expectation)
+
+    # Excess newlines produce empty blocks that must be eliminated
+    def test_markdown_to_blocks_empty_block(self):
+        md = """
+My paragraph is quite nice.
+
+
+
+But there might be
+some extra space that does not belong there?
+
+How vexing.
+"""
+        result = markdown_to_blocks(md)
+        expectation = [
+            'My paragraph is quite nice.', 
+            'But there might be\nsome extra space that does not belong there?', 
+            'How vexing.'
+            ]
+        self.assertEqual(result, expectation)
+    
+    # Blank newlines at the start and the end of the input must be ignored (white spaces are empty)
+    def test_markdown_to_blocks_empty_star_and_end(self):
+        md = """
+
+
+I have an empty line before me.
+
+I have a two white spaces behind me.
+ 
+ 
+"""
+        result = markdown_to_blocks(md)
+        expectation = [
+            'I have an empty line before me.', 
+            'I have a two white spaces behind me.'
+            ]
+        self.assertEqual(result, expectation)
+    
+    # No blank spaces at all
+    def test_markdown_to_blocks_no_blank(self):
+        md = """
+I have some strings, to pull me down
+but I got no blank spaces on me
+Just a continuous stream
+of issue.
+"""
+        result = markdown_to_blocks(md)
+        expectation = [
+            'I have some strings, to pull me down\nbut I got no blank spaces on me\nJust a continuous stream\nof issue.'
+            ]
+        self.assertEqual(result, expectation)
+    
+    # Just an empty string
+    def test_markdown_to_blocks_empty_string(self):
+        md = ""
+        result = markdown_to_blocks(md)
+        expectation = []
+        self.assertEqual(result, expectation)
+
+    # Only whitespace inputs (spaces, tabs, newlines)
+    def test_markdown_to_blocks_only_whitespace(self):
+        md = """
+
+
+ 
+ 
+
+    
+
+"""
+        result = markdown_to_blocks(md)
+        expectation = []
         self.assertEqual(result, expectation)
 
     def test_placeholder(self):

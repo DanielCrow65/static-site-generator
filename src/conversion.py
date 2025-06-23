@@ -147,4 +147,83 @@ def text_to_textnodes(text):
     new_text = split_nodes_delimiter(new_text, "`", TextType.CODE)
     return new_text
 
-# TEST
+def markdown_to_blocks(markdown):
+    result = markdown.split("\n\n")
+    final = []
+    for item in result:
+        new_item = item.strip()
+        if new_item.strip() != "":
+            final.append(new_item)
+    return final
+
+""" MARKDOWN TO BLOCKS TEST """
+# happy path
+md = """
+This is **bolded** paragraph
+
+This is another paragraph with _italic_ text and `code` here
+This is the same paragraph on a new line
+
+- This is a list
+- with items
+"""
+print(markdown_to_blocks(md))
+# ['This is **bolded** paragraph', 'This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line', '- This is a list\n- with items']
+
+# empty block to eliminate
+excess = """
+My paragraph is quite nice.
+
+
+
+But there might be
+some extra space that does not belong there?
+
+How vexing.
+"""
+
+print(markdown_to_blocks(excess))
+# ['My paragraph is quite nice.', 'But there might be\nsome extra space that does not belong there?', 'How vexing.']
+
+# begins or ends with empty blank lines/white space
+start_and_end = """
+
+
+I have an empty line before me.
+
+I have a two white spaces behind me.
+ 
+ 
+"""
+# ['I have an empty line before me.', 'I have a two white spaces behind me.']
+
+print(markdown_to_blocks(start_and_end))
+
+# markdown has no blank spaces
+no_blank = """
+I have some strings, to pull me down
+but I got no blank spaces on me
+Just a continuous stream
+of issue.
+"""
+# ['I have some strings, to pull me down\nbut I got no blank spaces on me\nJust a continuous stream\nof issue.']
+
+print(markdown_to_blocks(no_blank))
+['I have some strings, to pull me down\nbut I got no blank spaces on me\nJust a continuous stream\nof issue.']
+
+# just an empty string
+print(markdown_to_blocks(""))
+# []
+
+# only whitespace (spaces, tabs, newlines)
+only_whitespace = """
+
+
+ 
+ 
+
+    
+
+"""
+print(markdown_to_blocks(only_whitespace))
+# []

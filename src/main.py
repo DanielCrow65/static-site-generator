@@ -1,6 +1,6 @@
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes
+from conversion import split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks
 import re
 
 #print("hello world")
@@ -282,5 +282,74 @@ def main():
     # # [TextNode(I happen, Italic, None), TextNode( , Text, None), TextNode(to have, Bold, None), 
     # # TextNode( , Text, None), TextNode(adjacent delimiters, Code, None), TextNode( and really , Text, None), 
     # # TextNode(adjacent, Bold, None), TextNode(ones, Italic, None), TextNode(too, Code, None)]
+
+    """ MARKDOWN TO BLOCKS TEST """
+#     # happy path
+#     md = """
+# This is **bolded** paragraph
+
+# This is another paragraph with _italic_ text and `code` here
+# This is the same paragraph on a new line
+
+# - This is a list
+# - with items
+# """
+#     print(markdown_to_blocks(md))
+#     # ['This is **bolded** paragraph', 'This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line', '- This is a list\n- with items']
+
+#     # empty block to eliminate
+#     excess = """
+# My paragraph is quite nice.
+
+
+
+# But there might be
+# some extra space that does not belong there?
+
+# How vexing.
+# """
+
+#     print(markdown_to_blocks(excess))
+#     # ['My paragraph is quite nice.', 'But there might be\nsome extra space that does not belong there?', 'How vexing.']
+
+#     # begins or ends with empty blank lines/white space
+#     start_and_end = """
+
+
+# I have an empty line before me.
+
+# I have a two white spaces behind me.
+ 
+ 
+# """
+#     print(markdown_to_blocks(start_and_end))
+#     # ['I have an empty line before me.', 'I have a two white spaces behind me.']
+
+#     # markdown has no blank spaces
+#     no_blank = """
+# I have some strings, to pull me down
+# but I got no blank spaces on me
+# Just a continuous stream
+# of issue.
+# """
+#     print(markdown_to_blocks(no_blank))
+#     # ['I have some strings, to pull me down\nbut I got no blank spaces on me\nJust a continuous stream\nof issue.']
+
+#     # just an empty string
+#     print(markdown_to_blocks(""))
+#     # []
+
+#     # only whitespace (spaces, tabs, newlines)
+#     only_whitespace = """
+
+
+ 
+ 
+
+    
+
+# """
+#     print(markdown_to_blocks(only_whitespace))
+#     # []
 
 main()
