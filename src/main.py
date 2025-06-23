@@ -1,6 +1,6 @@
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import split_nodes_delimiter, split_nodes_image, split_nodes_link
+from conversion import split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes
 import re
 
 #print("hello world")
@@ -211,59 +211,76 @@ def main():
     # text_node_start_and_end = TextNode("![I start with an image](https://i.imgur.com/zjjcJKZ.png) and I end with ![one too.](https://i.imgur.com/zjjcJKZ.png)", TextType.TEXT)
     # print(split_nodes_image([text_node_start_and_end]))
 
-    # SPLIT LINK TESTS
-    # Happy Path with multiple inputs (and ends on a link)
-    link_node_test = TextNode(
-        "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", 
-        TextType.TEXT)
-    print(split_nodes_link([link_node_test]))
-    # [TextNode(This is text with a link , Text, None), TextNode(to boot dev, Link, https://www.boot.dev), 
-    # TextNode( and , Text, None), TextNode(to youtube, Link, https://www.youtube.com/@bootdotdev)]
+    """ SPLIT LINK TESTS """
+    # # Happy Path with multiple inputs (and ends on a link)
+    # link_node_test = TextNode(
+    #     "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)", 
+    #     TextType.TEXT)
+    # print(split_nodes_link([link_node_test]))
+    # # [TextNode(This is text with a link , Text, None), TextNode(to boot dev, Link, https://www.boot.dev), 
+    # # TextNode( and , Text, None), TextNode(to youtube, Link, https://www.youtube.com/@bootdotdev)]
 
-    # Just a TextNode with no links
-    text_node_with_no_links = TextNode("I am a simple text node with no links!", TextType.TEXT)
-    print(split_nodes_link([text_node_with_no_links]))
-    # [TextNode(I am a simple text node with no links!, Text, None)]
+    # # Just a TextNode with no links
+    # text_node_with_no_links = TextNode("I am a simple text node with no links!", TextType.TEXT)
+    # print(split_nodes_link([text_node_with_no_links]))
+    # # [TextNode(I am a simple text node with no links!, Text, None)]
 
-    # A non-TEXT TextNode (with a link that should be ignored)
-    non_text_node = TextNode("**I am not a simple text node, but I am not a [link node](https://www.boot.dev), either!", TextType.BOLD)
-    print(split_nodes_link([non_text_node]))
-    # [TextNode(**I am not a simple text node, but I am not a [link node](https://www.boot.dev), either!, Bold, None)]
+    # # A non-TEXT TextNode (with a link that should be ignored)
+    # non_text_node = TextNode("**I am not a simple text node, but I am not a [link node](https://www.boot.dev), either!", TextType.BOLD)
+    # print(split_nodes_link([non_text_node]))
+    # # [TextNode(**I am not a simple text node, but I am not a [link node](https://www.boot.dev), either!, Bold, None)]
 
-    # Link at the start of the string
-    link_node_start = TextNode("[Boot dev](https://www.boot.dev) is an excellent website!", TextType.TEXT)
-    print(split_nodes_link([link_node_start]))
-    # [TextNode(Boot dev, Link, https://www.boot.dev), TextNode( is an excellent website!, Text, None)]
+    # # Link at the start of the string
+    # link_node_start = TextNode("[Boot dev](https://www.boot.dev) is an excellent website!", TextType.TEXT)
+    # print(split_nodes_link([link_node_start]))
+    # # [TextNode(Boot dev, Link, https://www.boot.dev), TextNode( is an excellent website!, Text, None)]
 
-    # Adjacent markdown links
-    link_node_adjacent = TextNode("I have [two](https://www.boot.dev)[links](https://www.youtube.com/@bootdotdev) right next to each other.", TextType.TEXT)
-    print(split_nodes_link([link_node_adjacent]))
-    # [TextNode(I have , Text, None), TextNode(two, Link, https://www.boot.dev), 
-    # TextNode(links, Link, https://www.youtube.com/@bootdotdev), TextNode( right next to each other., Text, None)]
+    # # Adjacent markdown links
+    # link_node_adjacent = TextNode("I have [two](https://www.boot.dev)[links](https://www.youtube.com/@bootdotdev) right next to each other.", TextType.TEXT)
+    # print(split_nodes_link([link_node_adjacent]))
+    # # [TextNode(I have , Text, None), TextNode(two, Link, https://www.boot.dev), 
+    # # TextNode(links, Link, https://www.youtube.com/@bootdotdev), TextNode( right next to each other., Text, None)]
 
-    # Link separated with whitespace
-    link_node_whitespace = TextNode("I have [two](https://www.boot.dev) [links](https://www.youtube.com/@bootdotdev) on me too!", TextType.TEXT)
-    print(split_nodes_link([link_node_whitespace]))
-    # [TextNode(I have , Text, None), TextNode(two, Link, https://www.boot.dev), 
-    # TextNode(links, Link, https://www.youtube.com/@bootdotdev), TextNode( on me too!, Text, None)]
+    # # Link separated with whitespace
+    # link_node_whitespace = TextNode("I have [two](https://www.boot.dev) [links](https://www.youtube.com/@bootdotdev) on me too!", TextType.TEXT)
+    # print(split_nodes_link([link_node_whitespace]))
+    # # [TextNode(I have , Text, None), TextNode(two, Link, https://www.boot.dev), 
+    # # TextNode(links, Link, https://www.youtube.com/@bootdotdev), TextNode( on me too!, Text, None)]
 
-    # Multiple nodes with no links
-    non_text_nodes_multiple = [
-            TextNode("**I am not a simple text node, but not a link node either!**", TextType.BOLD), 
-            TextNode("_And I am also here!_", TextType.ITALIC)]
-    print(split_nodes_link(non_text_nodes_multiple))
-    # [TextNode(**I am not a simple text node, but not a link node either!**, Bold, None), 
-    # TextNode(_And I am also here!_, Italic, None)]
+    # # Multiple nodes with no links
+    # non_text_nodes_multiple = [
+    #         TextNode("**I am not a simple text node, but not a link node either!**", TextType.BOLD), 
+    #         TextNode("_And I am also here!_", TextType.ITALIC)]
+    # print(split_nodes_link(non_text_nodes_multiple))
+    # # [TextNode(**I am not a simple text node, but not a link node either!**, Bold, None), 
+    # # TextNode(_And I am also here!_, Italic, None)]
 
-    # Multiple nodes with some links
-    text_nodes_multiple = [
-            TextNode("This is text with a [link](https://www.boot.dev)", TextType.TEXT), 
-            TextNode("**I am not a simple text node, but not a link node either!**", TextType.BOLD),
-            TextNode("I am a simple text node with no links!", TextType.TEXT)]
-    print(split_nodes_link(text_nodes_multiple))
-    # [TextNode(This is text with a , Text, None), TextNode(link, Link, https://www.boot.dev), 
-    # TextNode(**I am not a simple text node, but not a link node either!**, Bold, None), 
-    # TextNode(I am a simple text node with no links!, Text, None)]
+    # # Multiple nodes with some links
+    # text_nodes_multiple = [
+    #         TextNode("This is text with a [link](https://www.boot.dev)", TextType.TEXT), 
+    #         TextNode("**I am not a simple text node, but not a link node either!**", TextType.BOLD),
+    #         TextNode("I am a simple text node with no links!", TextType.TEXT)]
+    # print(split_nodes_link(text_nodes_multiple))
+    # # [TextNode(This is text with a , Text, None), TextNode(link, Link, https://www.boot.dev), 
+    # # TextNode(**I am not a simple text node, but not a link node either!**, Bold, None), 
+    # # TextNode(I am a simple text node with no links!, Text, None)]
 
+    """ TEXT TO TEXTNODE TESTS """
+    # my_text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+    # print(text_to_textnodes(my_text))
+    # # [TextNode(This is , Text, None), TextNode(text, Bold, None), TextNode( with an , Text, None), 
+    # # TextNode(italic, Italic, None), TextNode( word and a , Text, None), TextNode(code block, Code, None), 
+    # # TextNode( and an , Text, None), TextNode(obi wan image, Image, https://i.imgur.com/fJRm4Vk.jpeg), 
+    # # TextNode( and a , Text, None), TextNode(link, Link, https://boot.dev)]
+
+    # layered_text = "I have **_a bolded italic word_** in me..."
+    # print(text_to_textnodes(layered_text))
+    # # [TextNode(I have , Text, None), TextNode(_a bolded italic word_, Bold, None), TextNode( in me..., Text, None)]
+
+    # adjacent_delim_text = "_I happen_ **to have** `adjacent delimiters` and really **adjacent**_ones_`too`"
+    # print(text_to_textnodes(adjacent_delim_text))
+    # # [TextNode(I happen, Italic, None), TextNode( , Text, None), TextNode(to have, Bold, None), 
+    # # TextNode( , Text, None), TextNode(adjacent delimiters, Code, None), TextNode( and really , Text, None), 
+    # # TextNode(adjacent, Bold, None), TextNode(ones, Italic, None), TextNode(too, Code, None)]
 
 main()

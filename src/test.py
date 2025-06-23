@@ -2,7 +2,7 @@ import unittest
 
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link
+from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes
 from extraction import extract_markdown_images, extract_markdown_links
 
 class TestTextNode(unittest.TestCase):
@@ -170,7 +170,7 @@ class TestTextNode(unittest.TestCase):
         with self.assertRaises(Exception):
             html_node = text_node_to_html_node(node)
     
-    # SPLIT NODES DELIMITER TESTS
+    """ SPLIT NODES DELIMITER TESTS """
     def test_split_no_delimiter(self):
         node = TextNode("I am a perfectly normal set of raw text", TextType.TEXT)
         result = split_nodes_delimiter([node], "**", TextType.BOLD)
@@ -225,7 +225,7 @@ class TestTextNode(unittest.TestCase):
         with self.assertRaises(ValueError):
             split_nodes_delimiter([node], "_", TextType.ITALIC)
 
-    # EXTRACT MARKDOWN TESTS
+    """ EXTRACT MARKDOWN TESTS """
     def test_extract_markdown_images(self):
         matches = extract_markdown_images(
             "This is text with an ![image](https://i.imgur.com/zjjcJKZ.png)"
@@ -408,6 +408,46 @@ class TestTextNode(unittest.TestCase):
             TextNode("I am a simple text node with no links!", TextType.TEXT)
             ]
         self.assertListEqual(new_nodes, expectation)
+
+    """ TEXT TO TEXTNODE TESTS"""
+    # Happy Path
+    def test_text_to_textnode(self):
+        text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+        result = text_to_textnodes(text)
+        expectation = [
+            TextNode("This is ", TextType.TEXT), TextNode("text", TextType.BOLD), TextNode(" with an ", TextType.TEXT), 
+            TextNode("italic", TextType.ITALIC), TextNode(" word and a ", TextType.TEXT), TextNode("code block", TextType.CODE), 
+            TextNode(" and an ", TextType.TEXT), TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"), 
+            TextNode(" and a ", TextType.TEXT), TextNode("link", TextType.LINK, "https://boot.dev")
+            ]
+        self.assertListEqual(result, expectation)
+
+    # Layered delimiters are not supported so should only capture the bolded text, not the italic text layered inside
+    def test_text_to_textnode_layered_delimiters(self):
+        text = "I have **_a bolded italic word_** in me..."
+        result = text_to_textnodes(text)
+        expectation = [
+            TextNode("I have ", TextType.TEXT), 
+            TextNode("_a bolded italic word_", TextType.BOLD), 
+            TextNode(" in me...", TextType.TEXT)
+        ]
+        self.assertListEqual(result, expectation)
+
+    # Directly adjacent different delimiters and with whitespace
+    def test_text_to_textnode_adjacent(self):
+        text = "_I happen_ **to have** `adjacent delimiters` and really **adjacent**_ones_`too`"
+        result = text_to_textnodes(text)
+        expectation = [
+            TextNode("I happen", TextType.ITALIC), TextNode(" ", TextType.TEXT), TextNode("to have", TextType.BOLD), 
+            TextNode(" ", TextType.TEXT), TextNode("adjacent delimiters", TextType.CODE), TextNode(" and really ", TextType.TEXT), 
+            TextNode("adjacent", TextType.BOLD), TextNode("ones", TextType.ITALIC), TextNode("too", TextType.CODE)
+        ]
+        self.assertEqual(result, expectation)
+
+    def test_placeholder(self):
+        result = ""
+        expectation = ""
+        self.assertEqual(result, expectation)
 
 if __name__ == "__main__":
     unittest.main()

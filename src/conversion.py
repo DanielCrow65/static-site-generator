@@ -136,4 +136,15 @@ def split_nodes_link(old_nodes):
             new_nodes.extend([node])
     return new_nodes
 
+def text_to_textnodes(text):
+    # turn the inputted string into a normal TextNode first
+    for_conversion = TextNode(text, TextType.TEXT)
+    # split off links and images FIRST. They will NOT be processed if they were split off to non-TEXT TextNodes first
+    new_text = split_nodes_image(split_nodes_link([for_conversion]))
+    # since we do not support layered formatting, the order the text types are processed here does not matter
+    new_text = split_nodes_delimiter(new_text, "**", TextType.BOLD)
+    new_text = split_nodes_delimiter(new_text, "_", TextType.ITALIC)
+    new_text = split_nodes_delimiter(new_text, "`", TextType.CODE)
+    return new_text
+
 # TEST
