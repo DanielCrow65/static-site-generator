@@ -2,8 +2,9 @@ import unittest
 
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks
+from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, markdown_to_html_node
 from extraction import extract_markdown_images, extract_markdown_links
+from markdown import BlockType, block_to_block_type
 
 class TestTextNode(unittest.TestCase):
     # TEXT NODE TESTS
@@ -37,7 +38,7 @@ class TestTextNode(unittest.TestCase):
         node2 = TextNode("This is a test node", TextType.BOLD,)
         self.assertNotEqual(node, node2)
     
-    # HTML NODE TESTS
+    """ HTML NODE TESTS """
     def test_prop_output(self):
         my_dict = {"href": "www.google.com", "target": "_blank"}
         node = HTMLNode('a', "Test link here", None, my_dict)
@@ -63,7 +64,7 @@ class TestTextNode(unittest.TestCase):
         result2 = ""
         self.assertEqual(result, result2)
 
-    # LEAF NODE TESTS
+    """ LEAF NODE TESTS """
     def test_leaf_to_html_p(self):
         node = LeafNode("p", "Hello, world!")
         self.assertEqual(node.to_html(), "<p>Hello, world!</p>")
@@ -87,7 +88,7 @@ class TestTextNode(unittest.TestCase):
         node = LeafNode("a", "Click!", {"href": "www.google.com", "target": "_blank"})
         self.assertEqual(node.to_html(), '<a href="www.google.com" target="_blank">Click!</a>')
 
-    # PARENT NODE TESTS
+    """ PARENT NODE TESTS """
     def test_parent_to_html(self):
         child_one = LeafNode("h2","Test Heading")
         child_two = LeafNode('a', "Test line here", {"href": "www.google.com", "target": "_blank"})
@@ -125,7 +126,7 @@ class TestTextNode(unittest.TestCase):
         parent_node = ParentNode("body", [child_node])
         self.assertEqual(parent_node.to_html(), "<body><div><span><b>great_grandchild</b></span></div></body>")
 
-    # TEXTNODE TO HTMLNODE TESTS
+    """ TEXTNODE TO HTMLNODE TESTS """
     def test_text(self):
         node = TextNode("This is a text node", TextType.TEXT)
         html_node = text_node_to_html_node(node)
@@ -538,6 +539,237 @@ of issue.
         expectation = []
         self.assertEqual(result, expectation)
 
+    """ BLOCK TO BLOCK TYPE TESTS """
+    def test_block_to_blocktype_heading(self):
+        md = "# I am a valid heading!"
+        result = block_to_block_type(md)
+        expectation = BlockType.HEAD
+        self.assertEqual(result, expectation)
+    
+    def test_block_to_blocktype_quote(self):
+        md = """
+> I am a valid quote
+> No really, I am!
+> Don't dare doubt me!
+""".strip()
+        result = block_to_block_type(md)
+        expectation = BlockType.QUOT
+        self.assertEqual(result, expectation)
+    
+    def test_block_to_blocktype_code(self):
+        md = "```I am a code block, yes sir!```"
+
+        result = block_to_block_type(md)
+        expectation = BlockType.CODE
+        self.assertEqual(result, expectation)
+    
+    def test_block_to_blocktype_unordered_list(self):
+        md = """
+- I am a list
+- I have no order
+- Let chaos reign!
+""".strip()
+        result = block_to_block_type(md)
+        expectation = BlockType.ULIST
+        self.assertEqual(result, expectation)
+    
+    # Even if the sequencing is not strictly followed, it is a valid ordered list
+    def test_block_to_blocktype_ordered_list(self):
+        md = """
+1. I am a list
+2. I demand order
+3. Laws will save this accursed land
+6. And I shall forever remain lawful, even if I break sequence!
+""".strip()
+        result = block_to_block_type(md)
+        expectation = BlockType.OLIST
+        self.assertEqual(result, expectation)
+    
+    def test_block_to_blocktype_invalid_header_no_whitespace(self):
+        md = "######I was supposed to be a heading block, but I forgot my whitespace. I beg forgiveness"
+        result = block_to_block_type(md)
+        expectation = BlockType.PARA
+        self.assertEqual(result, expectation)
+
+    def test_block_to_blocktype_invalid_header_extra(self):
+        md = "####### I was supposed to be a heading block, but I think I have too many # symbols..."
+        result = block_to_block_type(md)
+        expectation = BlockType.PARA
+        self.assertEqual(result, expectation)
+
+    def test_block_to_blocktype_invalid_quote(self):
+        md = "> I am a valid quote\n> No really, I am!\nTrust me, would I steer you wrong?"
+        result = block_to_block_type(md)
+        expectation = BlockType.PARA
+        self.assertEqual(result, expectation)
+    
+    def test_block_to_blocktype_invalid_unordered_list(self):
+            md = """
+- I am a list
+I have no order
+- But at what cost?
+""".strip()
+            result = block_to_block_type(md)
+            expectation = BlockType.PARA
+            self.assertEqual(result, expectation)
+    
+    def test_block_to_blocktype_invalid_ordered_list(self):
+        md = """
+2. I am a list
+3. I demand order
+- ...But I have been rendered fallible
+""".strip()
+        result = block_to_block_type(md)
+        expectation = BlockType.PARA
+        self.assertEqual(result, expectation)
+        
+    def test_block_to_blocktype_empty_string(self):
+        md = ""
+        result = block_to_block_type(md)
+        expectation = BlockType.PARA
+        self.assertEqual(result, expectation)
+        
+    """ BLOCK TO HTML TESTS """
+    # Header Happy Path
+    def test_block_to_html_header(self):
+        md = """
+# I am a header block
+
+## And so am I!
+
+### Me too!
+
+#### Don't forget about me!
+
+##### I'm not late to the party, am I?
+
+###### Hey wait for me!
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><h1>I am a header block</h1><h2>And so am I!</h2><h3>Me too!</h3><h4>Don't forget about me!</h4><h5>I'm not late to the party, am I?</h5><h6>Hey wait for me!</h6></div>"
+        )
+    
+    def test_block_to_html_header_with_inline_markdown(self):
+        md = "## This is a **bold** header"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div><h2>This is a <b>bold</b> header</h2></div>")
+    
+    # Blocks are separated by 2 newlines, so a header with a single internal newline is still one block
+    # Headers are treated like one line in HTML, so they must be replaced with a whitespace.
+    # This test checks if the replacement is being done correctly
+    def test_block_to_html_header_with_internal_newline(self):
+        md = """
+# This is a
+multi-line header
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div><h1>This is a multi-line header</h1></div>")
+
+    # A Paragraph block should correctly parse inline markdown and turn newlines into spaces
+    # because a paragraph block is processed only as a single line
+    # This tests also process inline markdown
+    def test_block_to_html_paragraph(self):
+        md = """
+This is **bolded** paragraph
+text in a p
+tag here
+
+This is another paragraph with _italic_ text and `code` here
+
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><p>This is <b>bolded</b> paragraph text in a p tag here</p><p>This is another paragraph with <i>italic</i> text and <code>code</code> here</p></div>",
+        )
+
+    # A Code block should not process inline markdown
+    def test_block_to_html_code(self):
+        md = """
+```
+This is text that _should_ remain
+the **same** even with inline stuff
+```
+"""
+
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(
+            html,
+            "<div><pre><code>This is text that _should_ remain\nthe **same** even with inline stuff\n</code></pre></div>",
+        )
+    
+    # An Unordered List block allows * as a markdown indicator
+    def test_block_to_html_unordered_list_variants(self):
+        md = """
+- Item one
+* Item two
+- Item three
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        expected_html = "<div><ul><li>Item one</li><li>Item two</li><li>Item three</li></ul></div>"
+        self.assertEqual(html, expected_html)
+        
+    # For an Ordered List, it does not matter that it is not actually ordered in the markdown input
+    # We only need to check if it follows a valid ordered list format (i.e. number, period, whitespace)
+    # A browser will properly reinterpret the html into an *actually ordered* list
+    def test_block_to_html_ordered_list_broken_sequence_input(self):
+        md = """
+1. Alpha
+2. Beta
+10. Gamma
+11. Delta
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        expected_html = "<div><ol><li>Alpha</li><li>Beta</li><li>Gamma</li><li>Delta</li></ol></div>"
+        self.assertEqual(html, expected_html)
+    
+    def test_block_to_html_mixed_blocks(self):
+        md = """
+# Welcome
+
+This is a paragraph.
+
+* List item one
+* List item two
+
+> This is a quote.
+
+```
+some_code = "hello"
+```
+
+## Subheading
+
+Another paragraph here.
+"""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        expected_html = "<div><h1>Welcome</h1><p>This is a paragraph.</p><ul><li>List item one</li><li>List item two</li></ul><blockquote>This is a quote.</blockquote><pre><code>some_code = \"hello\"\n</code></pre><h2>Subheading</h2><p>Another paragraph here.</p></div>"
+        self.assertEqual(html, expected_html)
+    
+    def test_block_to_html_empty_markdown(self):
+        md = ""
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div></div>")
+
+    # Escape characters like \n for new lines or \t for tabs are empty inputs ignored by markdown
+    def test_block_to_html_whitespace_markdown(self):
+        md = "   \n\n\t"
+        node = markdown_to_html_node(md)
+        html = node.to_html()
+        self.assertEqual(html, "<div></div>")
+    
     def test_placeholder(self):
         result = ""
         expectation = ""

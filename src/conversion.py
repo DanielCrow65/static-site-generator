@@ -1,6 +1,7 @@
 from textnode import TextType, TextNode
-from htmlnode import LeafNode
+from htmlnode import HTMLNode, LeafNode, ParentNode
 from extraction import extract_markdown_images, extract_markdown_links
+from markdown import BlockType, block_to_block_type
 
 def text_node_to_html_node(text_node):
     match text_node.text_type:
@@ -148,82 +149,115 @@ def text_to_textnodes(text):
     return new_text
 
 def markdown_to_blocks(markdown):
-    result = markdown.split("\n\n")
-    final = []
-    for item in result:
+    temp = markdown.split("\n\n")
+    blocks_list = []
+    for item in temp:
         new_item = item.strip()
         if new_item.strip() != "":
-            final.append(new_item)
-    return final
+            blocks_list.append(new_item)
+    return blocks_list
 
-""" MARKDOWN TO BLOCKS TEST """
-# happy path
-md = """
-This is **bolded** paragraph
+def text_to_children(text):
+    # this helper function should take a string of text (inline markdown from a block) and return a LIST of HTMLNodes
+    textnode_list = text_to_textnodes(text)
+    htmlnode_list = [] # since text_to_textnodes returns a list, process them to html nodes and append them here
+    for node in textnode_list:  
+        new_htmlnode = text_node_to_html_node(node)
+        htmlnode_list.append(new_htmlnode)
+    return htmlnode_list
 
-This is another paragraph with _italic_ text and `code` here
-This is the same paragraph on a new line
+def markdown_to_html_node(markdown):
+    # convert the text input into blocks
+    raw_blocks = markdown_to_blocks(markdown)
+    #print(raw_blocks)
+    total_children = [] # append each completed htmlnode here, to be contained in a parent div node when all is said and done
+    for block in raw_blocks:
+        # determine type of block
+        identified_block = block_to_block_type(block)
 
-- This is a list
-- with items
-"""
-print(markdown_to_blocks(md))
-# ['This is **bolded** paragraph', 'This is another paragraph with _italic_ text and `code` here\nThis is the same paragraph on a new line', '- This is a list\n- with items']
+        # create new HTML node based on the block type
+        if identified_block == BlockType.HEAD:
+            # identify how many # characters we have to prepare to slice off later
+            header_count = 0
+            for char in block:
+                if char == "#":
+                    header_count += 1
+                else:
+                    # exit the loop upon encountering a non # character (should be the whitespace)
+                    break # Boots tels me this is not in fact a bad habit and break is perfectly fine to use
+            match header_count:
+                case 1:
+                    new_tag = "h1" 
+                case 2:
+                    new_tag = "h2"
+                case 3:
+                    new_tag = "h3"
+                case 4:
+                    new_tag = "h4"
+                case 5:
+                    new_tag = "h5"
+                case 6:
+                    new_tag = "h6"
+            edited_block = block[header_count + 1:] # this should slice the text, excluding the unneeded markdown tags
+            processed_block = edited_block.replace("\n", " ") # my function will treat a header block with a newline as a single block, so I need to get rid of any internal newlines
+            inline_markdown = text_to_children(processed_block)
+            new_node = ParentNode(new_tag, inline_markdown, None)
+            total_children.append(new_node)
+            
+        elif identified_block == BlockType.PARA:
+            processed_block = block.replace("\n", " ") # newlines must be replaced with whitespace, for that's how browsers handle paragraph blocks
+            inline_markdown = text_to_children(processed_block)
+            new_node = ParentNode("p", inline_markdown, None)
+            total_children.append(new_node)
 
-# empty block to eliminate
-excess = """
-My paragraph is quite nice.
+        elif identified_block == BlockType.QUOT:
+            processed_block = block.split("\n") # we have to get rid of the > markdown syntax for each line in the block
+            list_for_join = [] # ...and we also need to put the string back together afterwards
+            for line in processed_block:
+                new_line = line.lstrip("> ")
+                list_for_join.append(new_line)
+            edited_block = "\n".join(list_for_join) # remember, we need a single string for text_to_children, not a list!
+            
+            inline_markdown = text_to_children(edited_block)
+            new_node = ParentNode("blockquote", inline_markdown, None)
+            total_children.append(new_node)
+        
+        elif identified_block == BlockType.CODE:
+            processed_block = block.strip("```").lstrip() # this should catch the ``` at the start and at the end of the block. The 2nd strip should take care of whitespace
+            code_textnode = TextNode(processed_block, TextType.CODE)
+            child_code_node = [text_node_to_html_node(code_textnode)] # though it is just a single item, the children property must be a list
+            new_node = ParentNode("pre", child_code_node, None) # pre tag is for block level code. Inline code is just wrapped in code
+            total_children.append(new_node)
+        
+        elif identified_block == BlockType.ULIST:
+            processed_block = block.split("\n")
+            list_item_nodes = []
+            for line in processed_block:
+                new_line = line.lstrip("- ").lstrip("* ") # removed unwanted markdown syntax
+                processed_line = text_to_children(new_line)
+                new_list_item = ParentNode("li", processed_line, None) # since each list item has its own tag, process to HTML node now
+                list_item_nodes.append(new_list_item)
+            new_node = ParentNode("ul", list_item_nodes, None) # each child was already processed into a list
+            total_children.append(new_node)
 
-
-
-But there might be
-some extra space that does not belong there?
-
-How vexing.
-"""
-
-print(markdown_to_blocks(excess))
-# ['My paragraph is quite nice.', 'But there might be\nsome extra space that does not belong there?', 'How vexing.']
-
-# begins or ends with empty blank lines/white space
-start_and_end = """
-
-
-I have an empty line before me.
-
-I have a two white spaces behind me.
- 
- 
-"""
-# ['I have an empty line before me.', 'I have a two white spaces behind me.']
-
-print(markdown_to_blocks(start_and_end))
-
-# markdown has no blank spaces
-no_blank = """
-I have some strings, to pull me down
-but I got no blank spaces on me
-Just a continuous stream
-of issue.
-"""
-# ['I have some strings, to pull me down\nbut I got no blank spaces on me\nJust a continuous stream\nof issue.']
-
-print(markdown_to_blocks(no_blank))
-['I have some strings, to pull me down\nbut I got no blank spaces on me\nJust a continuous stream\nof issue.']
-
-# just an empty string
-print(markdown_to_blocks(""))
-# []
-
-# only whitespace (spaces, tabs, newlines)
-only_whitespace = """
-
-
- 
- 
-
+        elif identified_block == BlockType.OLIST:
+            processed_block = block.split("\n")
+            list_item_nodes = []
+            for line in processed_block:
+                for_slice_index = line.find(".") # since the index of each item in the list changes dynamically, ignore it altogether...
+                new_line = line[for_slice_index + 1:].lstrip() # ...by finding the period and then slicing away the rest of the list
+                # +1 is to get the proper index to slice off of (the index after the period) 
+                # and lstrip will flexibly remove any number of whitespace after the period
+                processed_line = text_to_children(new_line)
+                new_list_item = ParentNode("li", processed_line, None)
+                list_item_nodes.append(new_list_item)
+            new_node = ParentNode("ol", list_item_nodes, None)
+            total_children.append(new_node)
     
+    div_node = ParentNode("div", total_children, None)
+    return div_node
 
-"""
-print(markdown_to_blocks(only_whitespace))
-# []
+""" NOTES """
+# Paragraph blocks are interpreted as a single line. So newlines, or tabs will be processed into a single whitespace to maintain
+# single line interpretation
+#

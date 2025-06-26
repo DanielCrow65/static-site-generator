@@ -1,6 +1,7 @@
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
-from conversion import split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks
+from conversion import split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, markdown_to_html_node
+from markdown import block_to_block_type
 import re
 
 #print("hello world")
@@ -352,4 +353,71 @@ def main():
 #     print(markdown_to_blocks(only_whitespace))
 #     # []
 
+#     md = """
+# - I am a list
+# - I have no order
+# - Let chaos reign!
+# """
+#     result = block_to_block_type(md)
+#     print(result)
+
+#     md = """
+# This is **bolded** paragraph
+# text in a p
+# tag here
+
+# This is another paragraph with _italic_ text and `code` here
+
+# """
+
+#     node = markdown_to_html_node(md)
+#     print(node.to_html())
+#     # print(node)
+
+#     md2 = """
+# ```
+# This is text that _should_ remain
+# the **same** even with inline stuff
+# ```
+# """
+#     node2 = markdown_to_html_node(md2)
+#     print(node2.to_html())
+
+#     md3 = """
+# # I am a header block
+
+# ## And so am I!
+
+# ### Me too!
+
+# #### Don't forget about me!
+
+# ##### I'm not late to the party, am I?
+
+# ###### Hey wait for me!
+# """
+#     node3 = markdown_to_html_node(md3)
+#     print(node3.to_html())
+
+#     md4 = """
+# # Welcome
+
+# This is a paragraph.
+
+# * List item one
+# * List item two
+
+# > This is a quote.
+
+# ```
+# some_code = "hello"
+# ```
+
+# ## Subheading
+
+# Another paragraph here.
+# """
+#     node4 = markdown_to_html_node(md4)
+#     print(node4.to_html())
+#     # <div><h1>Welcome</h1><p>This is a paragraph.</p><ul><li>List item one</li><li>List item two</li></ul><blockquote>This is a quote.</blockquote><pre><code>some_code = \"hello\"\n</code></pre><h2>Subheading</h2><p>Another paragraph here.</p></div>
 main()
