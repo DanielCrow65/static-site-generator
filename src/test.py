@@ -3,7 +3,7 @@ import unittest
 from textnode import TextNode, TextType
 from htmlnode import HTMLNode, LeafNode, ParentNode
 from conversion import text_node_to_html_node, split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes, markdown_to_blocks, markdown_to_html_node
-from extraction import extract_markdown_images, extract_markdown_links
+from extraction import extract_markdown_images, extract_markdown_links, extract_title
 from markdown import BlockType, block_to_block_type
 
 class TestTextNode(unittest.TestCase):
@@ -486,7 +486,7 @@ How vexing.
         self.assertEqual(result, expectation)
     
     # Blank newlines at the start and the end of the input must be ignored (white spaces are empty)
-    def test_markdown_to_blocks_empty_star_and_end(self):
+    def test_markdown_to_blocks_empty_start_and_end(self):
         md = """
 
 
@@ -770,6 +770,61 @@ Another paragraph here.
         html = node.to_html()
         self.assertEqual(html, "<div></div>")
     
+    """ EXTRACT TITLE TESTS """
+    def test_extract_title(self):
+        result = extract_title("# Hello")
+        expectation = "Hello"
+        self.assertEqual(result, expectation)
+
+    # Should only grab the first valid title
+    def test_extract_title_multiple_titles(self):
+        md = """
+- I am not a title
+# But I am!
+# I am also valid, but I wasn't here first...
+"""
+        result = extract_title(md)
+        expectation = "But I am!"
+        self.assertEqual(result, expectation)
+
+    def test_extract_title_multiline_markdown(self):
+        md = """
+- I am not a title
+
+> I am not a title either
+
+1. Still not a title
+
+# How about me?
+
+```
+I don't think I am a title either
+```
+
+My world for a title...
+"""
+        result = extract_title(md)
+        expectation = "How about me?"
+        self.assertEqual(result, expectation)
+
+    # Only h1 is acceptable, other header tags are not
+    def test_extract_title_invalid_headers(self):
+        with self.assertRaises(Exception):
+            extract_title("### Hello.")
+
+    def test_extract_title_no_valid_titles(self):
+        with self.assertRaises(Exception):
+            extract_title("- Not a valid title.")
+
+    # If valid title syntax was found, but it is empty after processing
+    def test_extract_title_empty_title(self):
+        with self.assertRaises(Exception):
+            extract_title("# ")
+    
+    def test_extract_title_empty_string_input(self):
+        with self.assertRaises(Exception):
+            extract_title("")
+
     def test_placeholder(self):
         result = ""
         expectation = ""

@@ -1,5 +1,7 @@
 import os
 import shutil
+from conversion import markdown_to_html_node
+from extraction import extract_title
 
 def transfer_static_to_public(source, destination):
     # we call this outside of the recursive function because otherwise it will delete everything every recursion
@@ -23,69 +25,38 @@ def copy_directory(source, destination):
             copy_directory(path_to_check, new_directory)
     return
 
+def generate_page(from_path, template_path, dest_path):
+    print(f"Generating page from {from_path} to {dest_path} using {template_path}.")
+    # documentation says using with here cleanly lets me close the file after its done with the with block. 
+    # I have to close the file manually if I don't use with (source_f.close())
+    with open(from_path, encoding="utf-8") as source_f: 
+        source_md = source_f.read() # this is a string
+    with open(template_path, encoding="utf-8") as temp_f:
+        template_html = temp_f.read() # this is also a string
+
+    # grab the title from the source markdown
+    # convert the source markdown into an html string ready for the webpage
+    page_title = extract_title(source_md)
+    webpage_content = markdown_to_html_node(source_md).to_html()
+
+    # update the template with the content we extracted
+    webpage_with_title = template_html.replace("{{ Title }}", page_title)
+    complete_webpage = webpage_with_title.replace("{{ Content }}", webpage_content)
+
+    # make sure the destination exists (specifically, the directory the destination path is on)
+    # the following write file attempt will fail if we do not
+    dest_dirname = os.path.dirname(dest_path) # this gets the directory the destination path is on, whether the last item is a dir or a file
+    os.makedirs(dest_dirname, exist_ok=True)
+
+    # write the complete_webpage into a file and then send it to the destination path
+    # the dest_path ensures the file is created in the correct place
+    with open(dest_path, mode="w", encoding="utf-8") as dest_f:
+        dest_f.write(complete_webpage)
+
+
 def main():
+    shutil.rmtree("./public", ignore_errors=True)
     transfer_static_to_public("./static", "./public")
-
-    # EMPTY SOURCE TEST
-    # empty_directory = "./static/empty"
-    # to_be_emptied = "./public/empty"
-    # print(os.listdir(empty_directory)) # []
-    # print(os.listdir(to_be_emptied)) # ['useless-stuff.md', 'bad-styles.css', 'fake-emails.md']
-
-    # transfer_static_to_public(empty_directory, to_be_emptied)
-
-    # print(os.listdir(empty_directory)) # []
-    # print(os.listdir(to_be_emptied)) # []
-
-    # NON-EXISTENT DESTINATION TEST
-    # full_source = "./static/test" 
-    # shallow_destination = "./public/trash" # differently named directory here and does not exist yet
-    # print(os.listdir(full_source))
-
-    # transfer_static_to_public(full_source, shallow_destination)
-
-    # print(os.listdir(full_source))
-    # print(os.listdir(shallow_destination))
-
-    # source = "./static/index.css"
-    # destination = "./public/test/index.css"
-
-    # test = shutil.copy(source, destination)
-    # print(test)
-
-    # path1 = "./static/index.css" # file that already exists
-    # path2 = "./public/test/test.md" # file that does not exist
-    # path3 = "./public/misc" # directory that does not exist
-    
-    # print(os.path.exists(path1)) # True
-    # print(os.path.exists(path2)) # False
-    # print(os.path.exists(path3)) # False
-
-    # print(os.path.isfile(path1)) # True
-    # print(os.path.isfile(path2)) # False
-    # print(os.path.isfile(path3)) # False
-
-    # # os.listdir testing
-    # current_directory = "."
-    # src_directory = "./src"
-    # print(os.listdir(current_directory)) # ['main.sh', 'src', 'public', '.git', '.gitignore', 'test.sh', 'static']
-    # print(os.listdir(src_directory)) # ['__pycache__', 'markdown.py', 'conversion.py', 'htmlnode.py', 'extraction.py', 'textnode.py', 'main.py', 'test.py']
-    
-    # # os.path.join testing
-    # custom_path = os.path.join(".", "src") # this command automatically adds / between arguments, and only accepts strings
-    # print(custom_path) # ./src
-    # print(os.listdir(custom_path)) # ['__pycache__', 'markdown.py', 'conversion.py', 'htmlnode.py', 'extraction.py', 'textnode.py', 'main.py', 'test.py']
-
-    # Try to create a custom path, make a directory, make a file then check if it exists
-    # mkdir will fail if the directory already exists
-    # new_path = os.path.join(".", "public", "test")
-    # os.mkdir(new_path + "/special") # try to create a new directory called special inside test
-    # new_file = shutil.copy("./static/index.css", new_path + "/special")
-    # print(os.path.exists(new_file)) # True
-
-    # os.makedirs testing
-    # newer_path = os.path.join(".", "special", "awesome", "dir")
-    # os.makedirs(newer_path, exist_ok=True) # setting exist_ok to True prevents error raising if the directory already exists
-    # print(os.listdir(".")) # ['main.sh', 'src', 'public', '.git', '.gitignore', 'test.sh', 'special', 'static']
+    generate_page("content/index.md", "template.html", "public/index.html")
 
 main()
