@@ -34,7 +34,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
     for node in old_nodes:
         if node.text_type == TextType.TEXT:
             node_text = node.text
-            #print(node_text)
+            #print(node_text) # debug line, checks what the loop is about to receive
             del_index = node_text.find(delimiter) # Find the index of the delimiter (this is the first delimiter)
             if del_index == 0: # This happens if the string already begins with a delimiter
                 within_delimiter = True
@@ -42,6 +42,7 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                 within_delimiter = False
 
             while node_text != "":
+                #print(node_text) # This checks the node content every loop, so use it for debugging
                 if within_delimiter is False:
                     del_index = node_text.find(delimiter) # find the delimiter at the current iteration of node_text (should get shorter over time)
                     if del_index == -1:
@@ -57,12 +58,13 @@ def split_nodes_delimiter(old_nodes, delimiter, text_type):
                     #print(node_text)
                     within_delimiter = True
                 elif within_delimiter is True:
-                    close_del_index = node_text[1:].find(delimiter) # Exclude index 0 (where the first delimiter is) and find the second one
+                    # We use len(delimiter) so it accounts or the length of the delimiter when slicing. Important for multi-char ones like ** or __
+                    close_del_index = node_text[len(delimiter):].find(delimiter) # Exclude index 0 (where the first delimiter is) and find the second one
                     if close_del_index == -1:
                         # currently in a delimited string but the string ended before finding the closing delimiter
                         raise ValueError("No closing delimiter for the last node")
                     else:
-                        close_del_index += 1 # This is to get the correct index for slicing
+                        close_del_index += len(delimiter) # This is to get the correct index for slicing
                         temp = node_text[len(delimiter):close_del_index] # len(delimiter) accounts for delimiters that are more than 1 character
                         delimited_node = TextNode(temp, text_type)
                     #delimited_list.append(temp) This was used to test the string inputs. Not needed for directly using TextNodes
@@ -144,6 +146,7 @@ def text_to_textnodes(text):
     new_text = split_nodes_image(split_nodes_link([for_conversion]))
     # since we do not support layered formatting, the order the text types are processed here does not matter
     new_text = split_nodes_delimiter(new_text, "**", TextType.BOLD)
+    new_text = split_nodes_delimiter(new_text, "__", TextType.BOLD)
     new_text = split_nodes_delimiter(new_text, "_", TextType.ITALIC)
     new_text = split_nodes_delimiter(new_text, "`", TextType.CODE)
     return new_text
@@ -233,7 +236,11 @@ def markdown_to_html_node(markdown):
             processed_block = block.split("\n")
             list_item_nodes = []
             for line in processed_block:
-                new_line = line.lstrip("- ").lstrip("* ") # removed unwanted markdown syntax
+                #new_line = line.lstrip("- ").lstrip("* ") # removed unwanted markdown syntax. PROBLEM: This deletes not just the list syntax, but also any following symbols that fit the strip criteria!
+                if line.startswith("- ") or line.startswith("* "):
+                    new_line = line[2:] # this excludes the list syntax, and ONLY the list syntax. e.g. - **Hi** will not accidentally delete the first ** after -
+                else:
+                    raise Exception("List syntax not found, you should not be seeing this.")
                 processed_line = text_to_children(new_line)
                 new_list_item = ParentNode("li", processed_line, None) # since each list item has its own tag, process to HTML node now
                 list_item_nodes.append(new_list_item)

@@ -436,7 +436,7 @@ class TestTextNode(unittest.TestCase):
 
     # Directly adjacent different delimiters and with whitespace
     def test_text_to_textnode_adjacent(self):
-        text = "_I happen_ **to have** `adjacent delimiters` and really **adjacent**_ones_`too`"
+        text = "_I happen_ __to have__ `adjacent delimiters` and really **adjacent**_ones_`too`"
         result = text_to_textnodes(text)
         expectation = [
             TextNode("I happen", TextType.ITALIC), TextNode(" ", TextType.TEXT), TextNode("to have", TextType.BOLD), 

@@ -12,19 +12,20 @@ def transfer_static_to_public(source, destination):
 def copy_directory(source, destination):
     if not os.path.isdir(source): # first off, make sure source is a directory
         raise ValueError(f"Source path {source} must be a directory.")
-    os.makedirs(destination, exist_ok=True)
-    source_list = os.listdir(source)
+    os.makedirs(destination, exist_ok=True) # This prevents errors being raised if the directory already exists
+    source_list = os.listdir(source) # Get a list of files and directories inside the source path
     for item in source_list:
-        path_to_check = os.path.join(source, item)
+        path_to_check = os.path.join(source, item) # combine the source path with the item to get the full path for each item
         if os.path.isfile(path_to_check):
-            shutil.copy(path_to_check, destination)
+            shutil.copy(path_to_check, destination) # if the full path refers to a file, copy it over right away
             print(f"Copied {path_to_check} to {destination}") # log the instance of the files being copied
-        else: # an invalid file name will be treated like a dir, no need to elif)
-            new_directory = os.path.join(destination, item) # do not use path_to_check here because it uses the source, we just need a relative path for this directory
-            os.makedirs(new_directory, exist_ok=True)
-            copy_directory(path_to_check, new_directory)
+        else: # an invalid file name will be treated like a dir, no need to elif
+            new_dir_path = os.path.join(destination, item) # do not use path_to_check here because it uses the source, we just need a relative path for this directory
+            os.makedirs(new_dir_path, exist_ok=True)
+            copy_directory(path_to_check, new_dir_path)
     return
 
+# takes a markdown file stored in from_path, convert it an html file then insert it into the template, then put the final file in dest_path
 def generate_page(from_path, template_path, dest_path):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}.")
     # documentation says using with here cleanly lets me close the file after its done with the with block. 
@@ -53,10 +54,36 @@ def generate_page(from_path, template_path, dest_path):
     with open(dest_path, mode="w", encoding="utf-8") as dest_f:
         dest_f.write(complete_webpage)
 
+def generate_pages_recursive(dir_path_content, template_path, des_dir_path):
+    lst_content_dir = os.listdir(dir_path_content) # get a list of all the files/directories in dir_path_content (./content must be here)
+    for item in lst_content_dir:
+        content_item_path = os.path.join(dir_path_content, item) # create the path to the current item being examined
+        if os.path.isfile(content_item_path) and content_item_path.endswith(".md"):
+            # This happens if a file is found and it is a markdown file
+            new_html = item.replace(".md", ".html") # make sure the destination file is an html!
+            new_des_path = os.path.join(des_dir_path, new_html) # to maintain the directory structure for the destination
+            print(f"Found a markdown file at {content_item_path}! Generating a new page at {new_des_path}!") # DEBUG
+            generate_page(content_item_path, template_path, new_des_path)
+        elif os.path.isdir(content_item_path):
+            # This happens if a directory is found
+            new_des_path = os.path.join(des_dir_path, item) # to maintain the directory structure for the destination
+            print(f"Found a new directory at {content_item_path}, looking inside...") # DEBUG
+            generate_pages_recursive(content_item_path, template_path, new_des_path)
+        else:
+            # This happens if a file is found but it is not an md
+            print(f"No markdown found at {content_item_path}, moving on...") # DEBUG
+            pass
+    print(f"All files successfully checked! Check out the new webpage at {des_dir_path}!") # DEBUG
+        
+
 
 def main():
     shutil.rmtree("./public", ignore_errors=True)
-    transfer_static_to_public("./static", "./public")
-    generate_page("content/index.md", "template.html", "public/index.html")
-
+    transfer_static_to_public("./static", "./public") # this creates the directories if they do not already exist, revisit the functions if needed
+    generate_pages_recursive("content", "template.html", "public")
+    # generate_page("content/index.md", "template.html", "public/index.html")
+    # generate_page("content/blog/glorfindel/index.md", "template.html", "public/blog/glorfindel/index.html")
+    # generate_page("content/blog/tom/index.md", "template.html", "public/blog/tom/index.html")
+    # generate_page("content/blog/majesty/index.md", "template.html", "public/blog/majesty/index.html")
+    # generate_page("content/contact/index.md", "template.html", "public/contact/index.html")
 main()
