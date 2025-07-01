@@ -41,10 +41,13 @@ def generate_page(from_path, template_path, dest_path, base_path):
     page_title = extract_title(source_md)
     webpage_content = markdown_to_html_node(source_md).to_html()
 
-    # update the template with the content we extracted
-    # the href replacements ensure that the links properly navigate paths regardless of where the script actually runs
-    webpage_with_title = template_html.replace("{{ Title }}", page_title).replace("href=\"/", f"href=\"{base_path}")
-    complete_webpage = webpage_with_title.replace("{{ Content }}", webpage_content).replace("src=\"/", f"src=\"{base_path}")
+    # update link/image paths so they work no matter where the web page building script is run
+    webpage_content = webpage_content.replace("href=\"/", f"href=\"{base_path}")
+    webpage_content = webpage_content.replace("src=\"/", f"src=\"{base_path}")
+
+    # create the webpage using the template provided
+    webpage_with_title = template_html.replace("{{ Title }}", page_title)
+    complete_webpage = webpage_with_title.replace("{{ Content }}", webpage_content)
 
     # make sure the destination exists (specifically, the directory the destination path is on)
     # the following write file attempt will fail if we do not
@@ -84,6 +87,7 @@ def main():
         base_path = sys.argv[1] # first argument entered in the CLI
     else:
         base_path = "/"
+    print(f"Base path is: '{base_path}'")
     # Github builds pages serves sites to a docs directory from the main by default 
     shutil.rmtree("./docs", ignore_errors=True)
     transfer_static_to_public("./static", "./docs") # this creates the directories if they do not already exist, revisit the functions if needed
