@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from conversion import markdown_to_html_node
 from extraction import extract_title
 
@@ -26,7 +27,7 @@ def copy_directory(source, destination):
     return
 
 # takes a markdown file stored in from_path, convert it an html file then insert it into the template, then put the final file in dest_path
-def generate_page(from_path, template_path, dest_path):
+def generate_page(from_path, template_path, dest_path, base_path):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}.")
     # documentation says using with here cleanly lets me close the file after its done with the with block. 
     # I have to close the file manually if I don't use with (source_f.close())
@@ -41,8 +42,9 @@ def generate_page(from_path, template_path, dest_path):
     webpage_content = markdown_to_html_node(source_md).to_html()
 
     # update the template with the content we extracted
-    webpage_with_title = template_html.replace("{{ Title }}", page_title)
-    complete_webpage = webpage_with_title.replace("{{ Content }}", webpage_content)
+    # the href replacements ensure that the links properly navigate paths regardless of where the script actually runs
+    webpage_with_title = template_html.replace("{{ Title }}", page_title).replace("href=\"/", f"href=\"{base_path}")
+    complete_webpage = webpage_with_title.replace("{{ Content }}", webpage_content).replace("src=\"/", f"src=\"{base_path}")
 
     # make sure the destination exists (specifically, the directory the destination path is on)
     # the following write file attempt will fail if we do not
@@ -54,7 +56,7 @@ def generate_page(from_path, template_path, dest_path):
     with open(dest_path, mode="w", encoding="utf-8") as dest_f:
         dest_f.write(complete_webpage)
 
-def generate_pages_recursive(dir_path_content, template_path, des_dir_path):
+def generate_pages_recursive(dir_path_content, template_path, des_dir_path, base_path):
     lst_content_dir = os.listdir(dir_path_content) # get a list of all the files/directories in dir_path_content (./content must be here)
     for item in lst_content_dir:
         content_item_path = os.path.join(dir_path_content, item) # create the path to the current item being examined
@@ -63,12 +65,12 @@ def generate_pages_recursive(dir_path_content, template_path, des_dir_path):
             new_html = item.replace(".md", ".html") # make sure the destination file is an html!
             new_des_path = os.path.join(des_dir_path, new_html) # to maintain the directory structure for the destination
             print(f"Found a markdown file at {content_item_path}! Generating a new page at {new_des_path}!") # DEBUG
-            generate_page(content_item_path, template_path, new_des_path)
+            generate_page(content_item_path, template_path, new_des_path, base_path)
         elif os.path.isdir(content_item_path):
             # This happens if a directory is found
             new_des_path = os.path.join(des_dir_path, item) # to maintain the directory structure for the destination
             print(f"Found a new directory at {content_item_path}, looking inside...") # DEBUG
-            generate_pages_recursive(content_item_path, template_path, new_des_path)
+            generate_pages_recursive(content_item_path, template_path, new_des_path, base_path)
         else:
             # This happens if a file is found but it is not an md
             print(f"No markdown found at {content_item_path}, moving on...") # DEBUG
@@ -78,12 +80,12 @@ def generate_pages_recursive(dir_path_content, template_path, des_dir_path):
 
 
 def main():
-    shutil.rmtree("./public", ignore_errors=True)
-    transfer_static_to_public("./static", "./public") # this creates the directories if they do not already exist, revisit the functions if needed
-    generate_pages_recursive("content", "template.html", "public")
-    # generate_page("content/index.md", "template.html", "public/index.html")
-    # generate_page("content/blog/glorfindel/index.md", "template.html", "public/blog/glorfindel/index.html")
-    # generate_page("content/blog/tom/index.md", "template.html", "public/blog/tom/index.html")
-    # generate_page("content/blog/majesty/index.md", "template.html", "public/blog/majesty/index.html")
-    # generate_page("content/contact/index.md", "template.html", "public/contact/index.html")
+    if len(sys.argv) > 1: # by default sys.argv only has one argument: the name of the program that ran it
+        base_path = sys.argv[1] # first argument entered in the CLI
+    else:
+        base_path = "/"
+    # Github builds pages serves sites to a docs directory from the main by default 
+    shutil.rmtree("./docs", ignore_errors=True)
+    transfer_static_to_public("./static", "./docs") # this creates the directories if they do not already exist, revisit the functions if needed
+    generate_pages_recursive("content", "template.html", "docs", base_path)
 main()
