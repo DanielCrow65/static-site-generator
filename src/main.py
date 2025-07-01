@@ -35,6 +35,7 @@ def generate_page(from_path, template_path, dest_path, base_path):
         source_md = source_f.read() # this is a string
     with open(template_path, encoding="utf-8") as temp_f:
         template_html = temp_f.read() # this is also a string
+        template_html = template_html.replace("href=\"/", f"href=\"{base_path}") # this ensures the css link will correctly generate
 
     # grab the title from the source markdown
     # convert the source markdown into an html string ready for the webpage
